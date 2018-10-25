@@ -2,6 +2,7 @@ import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Except
+import Control.Monad.Trans.Cont
 
 getSequence :: IO Bool
 getSequence = do
@@ -25,6 +26,7 @@ mainIO = do
     then putStrLn "Right"
     else putStrLn "Wrong"
 
+-- terminate the control flow at any point
 getSequenceMaybe :: MaybeT IO ()
 getSequenceMaybe = do
     r <- liftIO getLine
@@ -43,6 +45,7 @@ mainMaybe = do
         Just _ -> putStrLn "Right"
         Nothing -> putStrLn "Wrong"
 
+-- terminate the control flow at any point with an error return
 getSequenceEither :: ExceptT String IO ()
 getSequenceEither = do
     r <- liftIO getLine
@@ -61,4 +64,54 @@ mainEither = do
         Right _ -> putStrLn "Right"
         Left s  -> putStrLn s
 
-main = mainEither
+-- Continuation monad without CallCC looks like just plain IO monad.
+getSequenceCont1 :: ContT r IO (Either String ())
+getSequenceCont1 = do
+    r <- liftIO getLine
+    if (r /= "x")
+    then return $ Left $ "Expecting x got: " ++ r
+    else do
+        r <- liftIO getLine
+        if (r /= "y")
+        then return $ Left $ "Expecting y got: " ++ r
+        else do
+            r <- liftIO getLine
+            if (r /= "z")
+            then return $ Left $ "Expecting z got: " ++ r
+            else return $ Right ()
+
+-- CallCC is the goto/setjmp/longjmp equivalent
+-- Allows us to manipulate the control flow in arbitrary ways
+getSequenceCont2 :: ContT r IO (Either String ())
+getSequenceCont2 =
+    callCC $ \exit -> do
+        r <- liftIO getLine
+        if (r /= "x") then do
+            exit $ Left $ "Expecting x got: " ++ r
+        else return $ Right ()
+
+        r <- liftIO getLine
+        if (r /= "y") then do
+            exit $ Left $ "Expecting y got: " ++ r
+        else return $ Right ()
+
+        r <- liftIO getLine
+        if (r /= "z") then do
+            exit $ Left $ "Expecting z got: " ++ r
+        else return $ Right ()
+
+mainCont1 :: IO ()
+mainCont1 = do
+    r <- runContT getSequenceCont1 return
+    case r of
+        Right _ -> putStrLn "Right"
+        Left s  -> putStrLn s
+
+mainCont2 :: IO ()
+mainCont2 = do
+    r <- runContT getSequenceCont2 return
+    case r of
+        Right _ -> putStrLn "Right"
+        Left s  -> putStrLn s
+
+main = mainCont2
