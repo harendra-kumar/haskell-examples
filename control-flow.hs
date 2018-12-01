@@ -4,6 +4,12 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.Cont
 
+-- We illustrate common control flow manipulation mechanisms using a simple
+-- example. The user enters a sequence on the console. The sequence is "x"
+-- followed by a newline and then "y" followed by newline and then "z" followed
+-- by newline. If the sequence is correct the program ends otherwise it prints
+-- an error wherever the expected character is not entered.
+--
 getSequence :: IO Bool
 getSequence = do
     r <- getLine
